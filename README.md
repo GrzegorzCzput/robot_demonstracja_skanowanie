@@ -1,5 +1,51 @@
 # TRLC-DK1 scanning motion demo
 
+```bash
+git clone --recurse-submodules git@github.com:GrzegorzCzput/robot_demonstracja_skanowanie.git
+# already cloned without it?  git submodule update --init
+```
+
+The official robot model and driver are in the `third_party/trlc-dk1` submodule,
+pinned to upstream commit `12f5368`.
+
+## Run on the real robot (Docker, nothing installed locally)
+
+Needs only Docker and the arm on USB. The saved trajectories in `outputs/` are
+played as they are; no GPU or cuRobo is needed.
+
+```bash
+./run_robot.sh --dry-run                                   # no robot: checks and timing only
+./run_robot.sh --port /dev/ttyACM0 --speed 0.3 --loops 1   # first real test: slow, one pass
+./run_robot.sh --port /dev/ttyACM0                         # loop the four-view scan
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # one upward pass, stops at the top
+```
+
+The first run builds the image. The arm moves slowly to the first pose after
+you press Enter, then plays the trajectory, aborting if any joint is more than
+0.25 rad from the plan.
+
+| Key | Effect |
+|---|---|
+| **Esc** | Return slowly to the startup pose, then disable the motors (no prompt) |
+| Ctrl+C | Return slowly to the startup pose, then ask before disabling the motors |
+| **Robot power switch** | Emergency stop. Both keys are software and drive home first |
+
+Safety notes:
+
+- Disabling the motors makes the arm go limp. Start with the arm in a low,
+  clear pose so it does not fall far.
+- The moves to the first pose and back home are straight joint-space
+  interpolations and are **not collision checked**.
+- The planning model does not include the phone or its mount; minimum planned
+  clearance is 11.6 mm. Do first runs without the object and at `--speed 0.3`.
+- The driver opens the gripper at startup to calibrate it.
+- Arrow keys also trigger Esc.
+
+Without Docker: `pip install numpy pyserial mujoco`, then
+`PYTHONPATH=third_party/trlc-dk1 python follow_trajectory.py --port /dev/ttyACM0`.
+
+## Simulation viewer
+
 Open **http://127.0.0.1:8080** and choose **Motion mode**:
 
 - **Four-view scan:** a 130° sweep with flatter outer camera views, followed by

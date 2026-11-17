@@ -1,0 +1,102 @@
+{
+  "planner": "cuRobo collision-aware IK with a gravity-referenced Cartesian guide",
+  "mode": "scan",
+  "loop_allowed": true,
+  "samples": 901,
+  "duration_seconds": 18.0,
+  "sample_dt": 0.02,
+  "camera_frame": "camera",
+  "camera_optical_axis": "+X",
+  "dwell_seconds": 1.0,
+  "target_duration_seconds": 18.0,
+  "move_durations_seconds": [
+    2.1,
+    3.48,
+    2.1,
+    6.32
+  ],
+  "view_parameters_deg": [
+    115.0,
+    150.0,
+    210.0,
+    245.0
+  ],
+  "view_rolls_deg": [
+    -15.0,
+    0.0,
+    0.0,
+    15.000000000000002
+  ],
+  "view_heights_m": [
+    0.28,
+    0.34,
+    0.34,
+    0.28
+  ],
+  "view_radii_m": [
+    0.23,
+    0.28,
+    0.28,
+    0.23
+  ],
+  "camera_guide_step_deg": 1.0,
+  "max_abs_camera_roll_deg": 15.00000064853529,
+  "camera_roll_limit_deg": 20.0,
+  "min_image_down_alignment": 0.7592117651015639,
+  "max_continuous_aim_error_deg": 0.002130002014801556,
+  "image_down_axis": "camera -Z (optical image +Y)",
+  "return_path": "reverse viewing arc, no joint-space shortcut",
+  "peak_velocity_rad_s": [
+    1.8363173728546072,
+    1.2094053324465637,
+    1.1132367185448784,
+    1.1158979685221853,
+    2.0990543765683896,
+    1.6546027049293826
+  ],
+  "peak_acceleration_rad_s2": [
+    3.582879327180185,
+    2.910223901491715,
+    3.3846289082363126,
+    2.6072598929170834,
+    3.936974371700126,
+    2.9522978392149923
+  ],
+  "velocity_limit_rad_s": [
+    2.7,
+    2.7,
+    2.7,
+    2.7,
+    2.7,
+    2.7
+  ],
+  "acceleration_limit_rad_s2": [
+    6.5,
+    6.5,
+    6.5,
+    6.5,
+    6.5,
+    6.5
+  ],
+  "velocity_scale": 0.5,
+  "acceleration_scale": 1.0,
+  "acceleration_reference_source": "assumed_demo_reference_not_hardware_rating",
+  "min_world_clearance_m": 0.011595994234085083,
+  "min_self_clearance_m": 0.020160149782896042,
+  "view_pointing_error_deg": [
+    7.194024615706825e-06,
+    3.818191820832846e-06,
+    2.9575586669421963e-06,
+    1.9469034601067135e-05
+  ],
+  "closed_loop": true,
+  "robot_source_commit": "12f5368aefd0381461f2c7ffbb5611b4e8c90de9",
+  "retiming": "C2 cubic path + septic time blend; continuous Bernstein derivative bounds",
+  "collision_validation": "all saved samples, fitted robot spheres; configured neighbor exclusions",
+  "view_angles_deg": [
+    115.0,
+    150.0,
+    210.0,
+    245.0
+  ]
+}

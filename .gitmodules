@@ -1,0 +1,3 @@
+[submodule "third_party/trlc-dk1"]
+	path = third_party/trlc-dk1
+	url = https://github.com/robot-learning-co/trlc-dk1.git
