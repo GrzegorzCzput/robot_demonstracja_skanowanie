@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
-# Build (first time only) and run follow_trajectory.py in Docker.
+# Run follow_trajectory.py on the real robot from a local virtual environment.
+# The first run creates .venv-robot/ in this folder; nothing is installed system-wide.
 #   ./run_robot.sh --port /dev/ttyACM0 --speed 0.3 --loops 1
 #   ./run_robot.sh --dry-run
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-IMAGE=trlc-dk1-follow
+VENV=.venv-robot
 
-docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" .
+if [[ ! -f third_party/trlc-dk1/trlc_dk1_control/robot.py ]]; then
+  git submodule update --init third_party/trlc-dk1
+fi
+
+if [[ ! -x $VENV/bin/python ]] || ! cmp -s requirements-robot.txt "$VENV/.installed"; then
+  echo "Setting up $VENV (first run only)..."
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install -q --upgrade pip
+  "$VENV/bin/pip" install -q -r requirements-robot.txt
+  cp requirements-robot.txt "$VENV/.installed"
+fi
 
 port=/dev/ttyACM0
 dry=0
@@ -18,15 +29,13 @@ for i in "${!args[@]}"; do
     --dry-run) dry=1 ;;
   esac
 done
-
-device=()
-if [[ $dry == 0 ]]; then
-  if [[ ! -e $port ]]; then
-    echo "Robot port $port not found. Plug in the arm or pass --port (see: ls /dev/ttyACM* /dev/ttyUSB*)." >&2
-    exit 1
-  fi
-  device=(--device "$port")
+if [[ $dry == 0 && ! -e $port ]]; then
+  echo "Robot port $port not found. Plug in the arm or pass --port (see: ls /dev/ttyACM* /dev/ttyUSB*)." >&2
+  exit 1
+fi
+if [[ $dry == 0 && ! -w $port ]]; then
+  echo "No permission for $port. Run: sudo usermod -aG dialout \$USER  (then log out and back in)." >&2
+  exit 1
 fi
 
-tty=(-i); [[ -t 0 ]] && tty=(-it)   # Esc needs a terminal
-exec docker run --rm "${tty[@]}" "${device[@]}" -v "$PWD:/app:ro" "$IMAGE" "$@"
+PYTHONPATH="$PWD/third_party/trlc-dk1${PYTHONPATH:+:$PYTHONPATH}" exec "$VENV/bin/python" follow_trajectory.py "$@"

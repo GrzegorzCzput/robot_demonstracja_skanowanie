@@ -8,10 +8,13 @@ git clone --recurse-submodules git@github.com:GrzegorzCzput/robot_demonstracja_s
 The official robot model and driver are in the `third_party/trlc-dk1` submodule,
 pinned to upstream commit `12f5368`.
 
-## Run on the real robot (Docker, nothing installed locally)
+## Run on the real robot
 
-Needs only Docker and the arm on USB. The saved trajectories in `outputs/` are
-played as they are; no GPU or cuRobo is needed.
+Needs Python 3.12+ and the arm on USB. The saved trajectories in `outputs/` are
+played as they are; no GPU or cuRobo is needed. The first run creates a local
+virtual environment in `.venv-robot/` (numpy, pyserial, mujoco from
+`requirements-robot.txt`); nothing is installed system-wide. Your user needs
+access to the serial port (`sudo usermod -aG dialout $USER`, then log in again).
 
 ```bash
 ./run_robot.sh --dry-run                                   # no robot: checks and timing only
@@ -20,7 +23,8 @@ played as they are; no GPU or cuRobo is needed.
 ./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # one upward pass, stops at the top
 ```
 
-The first run builds the image. The arm moves slowly to the first pose after
+`./run_robot_docker.sh` takes the same arguments and runs everything in Docker
+instead. The arm moves slowly to the first pose after
 you press Enter, then plays the trajectory, aborting if any joint is more than
 0.25 rad from the plan.
 
@@ -40,9 +44,6 @@ Safety notes:
   clearance is 11.6 mm. Do first runs without the object and at `--speed 0.3`.
 - The driver opens the gripper at startup to calibrate it.
 - Arrow keys also trigger Esc.
-
-Without Docker: `pip install numpy pyserial mujoco`, then
-`PYTHONPATH=third_party/trlc-dk1 python follow_trajectory.py --port /dev/ttyACM0`.
 
 ## Simulation viewer
 

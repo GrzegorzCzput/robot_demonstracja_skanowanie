@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Same as run_robot.sh, but inside Docker (nothing installed on the host).
+#   ./run_robot_docker.sh --port /dev/ttyACM0 --speed 0.3 --loops 1
+#   ./run_robot_docker.sh --dry-run
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+IMAGE=trlc-dk1-follow
+
+docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" .
+
+port=/dev/ttyACM0
+dry=0
+args=("$@")
+for i in "${!args[@]}"; do
+  case "${args[$i]}" in
+    --port) port="${args[$((i + 1))]}" ;;
+    --port=*) port="${args[$i]#--port=}" ;;
+    --dry-run) dry=1 ;;
+  esac
+done
+
+device=()
+if [[ $dry == 0 ]]; then
+  if [[ ! -e $port ]]; then
+    echo "Robot port $port not found. Plug in the arm or pass --port (see: ls /dev/ttyACM* /dev/ttyUSB*)." >&2
+    exit 1
+  fi
+  device=(--device "$port")
+fi
+
+tty=(-i); [[ -t 0 ]] && tty=(-it)   # Esc needs a terminal
+exec docker run --rm "${tty[@]}" "${device[@]}" -v "$PWD:/app:ro" "$IMAGE" "$@"

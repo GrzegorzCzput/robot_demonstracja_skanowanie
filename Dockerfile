@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
 # Only what the official driver (trlc_dk1_control + DM_CAN) actually imports.
-RUN pip install --no-cache-dir numpy==2.5.2 pyserial==3.5 mujoco==4.0.1
+COPY requirements-robot.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements-robot.txt
 
 # Full upstream repo: the vendored third_party copy lacks the DM_CAN motor library.
 RUN git clone https://github.com/robot-learning-co/trlc-dk1.git /opt/trlc-dk1 \

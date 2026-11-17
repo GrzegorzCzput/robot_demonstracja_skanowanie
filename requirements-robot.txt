@@ -1,0 +1,4 @@
+# Minimal runtime for follow_trajectory.py (real robot). Used by run_robot.sh and the Dockerfile.
+numpy==2.5.2
+pyserial==3.5
+mujoco==4.0.1
