@@ -28,4 +28,5 @@ if [[ $dry == 0 ]]; then
   device=(--device "$port")
 fi
 
-exec docker run --rm -it "${device[@]}" -v "$PWD:/app:ro" "$IMAGE" "$@"
+tty=(-i); [[ -t 0 ]] && tty=(-it)   # Esc needs a terminal
+exec docker run --rm "${tty[@]}" "${device[@]}" -v "$PWD:/app:ro" "$IMAGE" "$@"
