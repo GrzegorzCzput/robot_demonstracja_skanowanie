@@ -28,6 +28,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parent
 FILES = {"scan": "scan_4_positions.npz", "upward_arc": "scan_upward_arc.npz"}
+# Default --speed per mode. The upward arc moves slowly at 1x; 3.5x stays under
+# its 3.73x cap (about 85% of the assumed 6.5 rad/s^2 acceleration cap).
+DEFAULT_SPEED = {"scan": 1.0, "upward_arc": 3.5}
 JOINTS = [f"joint{i}" for i in range(1, 7)]
 # Same as trlc_dk1_control config.joint_pos_limits / URDF; the driver silently
 # clips 0.05 rad inside these, so refuse trajectories that would be clipped.
@@ -206,8 +209,9 @@ def main():
     p.add_argument("--port", default="/dev/ttyACM0", help="Robot USB serial port")
     p.add_argument("--mode", choices=tuple(FILES), default="scan")
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
-    p.add_argument("--speed", type=float, default=1.0,
-                   help="Motion speed factor, 0.1 up to the trajectory's limit (holds stay 1 s)")
+    p.add_argument("--speed", type=float,
+                   help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
+                        "(default: 1.0 scan, 3.5 upward arc)")
     p.add_argument("--once", action="store_true",
                    help="Upward arc: single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
@@ -218,6 +222,8 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="No hardware; simulate the robot")
     a = p.parse_args()
     path = a.trajectory or ROOT / "outputs" / FILES[a.mode]
+    if a.speed is None:
+        a.speed = DEFAULT_SPEED[a.mode]
     t, q, qd, loop, max_speed = load(path)
     max_speed = np.floor(max_speed * 100) / 100
     if not 0.1 <= a.speed <= max_speed:

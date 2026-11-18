@@ -20,15 +20,16 @@ access to the serial port (`sudo usermod -aG dialout $USER`, then log in again).
 ./run_robot.sh --dry-run                                   # no robot: checks and timing only
 ./run_robot.sh --port /dev/ttyACM0 --speed 0.3 --loops 1   # first real test: slow, one pass
 ./run_robot.sh --port /dev/ttyACM0                         # loop the four-view scan
-./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # up the arc and back down, repeating
-./run_robot.sh --port /dev/ttyACM0 --mode upward_arc --speed 2   # same, moves twice as fast
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # up the arc and back down, repeating (3.5x)
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc --speed 1.5 # same, slower (first runs)
 ./run_robot.sh --port /dev/ttyACM0 --mode upward_arc --once      # one pass, stops at the top
 ```
 
 `./run_robot_docker.sh` takes the same arguments and runs everything in Docker
 instead.
 
-`--speed` scales only the motion; the 1 s photo stops stay 1 s. The maximum is
+`--speed` scales only the motion; the 1 s photo stops stay 1 s. Defaults: **1.0**
+for the scan, **3.5** for the upward arc (a 14 s up-and-down cycle). The maximum is
 set by each trajectory's velocity and acceleration caps: **1.28** for the scan
 (already near its caps) and **3.73** for the upward arc. Higher values are refused.
 The upward arc loops by retracing the planned path in reverse, so it stays on
