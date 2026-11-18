@@ -212,6 +212,8 @@ def main():
                         "(default: 3.5 upward arc, 1.0 sweep and combo)")
     p.add_argument("--hold", type=float, default=0.5,
                    help="Length of each photo stop in seconds (default: 0.5)")
+    p.add_argument("--stops", action="store_true",
+                   help="Combo: stop at the 8 photo positions (length set by --hold)")
     p.add_argument("--once", action="store_true",
                    help="Single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
@@ -221,7 +223,9 @@ def main():
     p.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
     p.add_argument("--dry-run", action="store_true", help="No hardware; simulate the robot")
     a = p.parse_args()
-    path = a.trajectory or ROOT / FILES[a.mode]
+    if a.stops and a.mode != "combo":
+        p.error("--stops is only for --mode combo (the upward arc always stops; the sweep never does)")
+    path = a.trajectory or ROOT / ("trajectory/combo_stops.npz" if a.stops else FILES[a.mode])
     if a.speed is None:
         a.speed = DEFAULT_SPEED[a.mode]
     t, q, qd, loop, max_speed, dwell = load(path)

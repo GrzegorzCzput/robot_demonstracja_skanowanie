@@ -10,7 +10,8 @@ There are three motions:
   One cycle takes 5.7 s.
 - **Combo** (`--mode combo`): side to side, then up and down, repeating. Same
   constant speed with no photo stops; it curves from one motion into the other
-  in the middle without stopping. One cycle takes 9.5 s.
+  in the middle without stopping. One cycle takes 9.5 s. Add `--stops` to stop
+  at the 8 photo positions (19.4 s per cycle with the default 0.5 s stops).
 
 ![Robot at the four photo positions](docs/upward_arc.png)
 
@@ -29,6 +30,7 @@ cd robot_demonstracja_skanowanie
 ./run_robot_docker.sh --mode upward_arc   # run it on the robot
 ./run_robot_docker.sh --mode sweep        # side-to-side sweep
 ./run_robot_docker.sh --mode combo        # side to side, then up and down
+./run_robot_docker.sh --mode combo --stops   # same, with photo stops
 ```
 
 The first run builds the Docker image, which takes a minute or two. After that:
@@ -53,7 +55,8 @@ When the motors turn off, the arm goes limp and drops.
 |---|---|
 | `--port /dev/ttyACM1` | The robot isn't on `/dev/ttyACM0`. Find it with `ls /dev/ttyACM*` |
 | `--speed 1.5` | Slower or faster motion. Upward arc: default 3.5, max 3.73. Sweep and combo: default 1.0, max 1.02 |
-| `--hold 1` | Upward arc: photo stop length in seconds (the default is 0.5) |
+| `--stops` | Combo: stop at the 8 photo positions |
+| `--hold 1` | Photo stop length in seconds, upward arc and `combo --stops` (the default is 0.5) |
 | `--loops 320` | Stop after 320 cycles (arc 11 s, sweep 5.7 s, combo 9.5 s each) |
 | `--once` | Upward arc: go up once and stop at the top |
 
