@@ -9,8 +9,8 @@ There are three motions:
   speed, with no stops. It only slows down to turn around at the two ends.
   One cycle takes 5.7 s.
 - **Combo** (`--mode combo`): side to side, then up and down, repeating. Same
-  constant speed with no photo stops; it only stops for an instant in the middle
-  when it switches between the two. One cycle takes 10.7 s.
+  constant speed with no photo stops; it curves from one motion into the other
+  in the middle without stopping. One cycle takes 9.5 s.
 
 ![Robot at the four photo positions](docs/upward_arc.png)
 
@@ -54,7 +54,7 @@ When the motors turn off, the arm goes limp and drops.
 | `--port /dev/ttyACM1` | The robot isn't on `/dev/ttyACM0`. Find it with `ls /dev/ttyACM*` |
 | `--speed 1.5` | Slower or faster motion. Upward arc: default 3.5, max 3.73. Sweep and combo: default 1.0, max 1.02 |
 | `--hold 1` | Upward arc: photo stop length in seconds (the default is 0.5) |
-| `--loops 320` | Stop after 320 cycles (arc 11 s, sweep 5.7 s, combo 10.7 s each) |
+| `--loops 320` | Stop after 320 cycles (arc 11 s, sweep 5.7 s, combo 9.5 s each) |
 | `--once` | Upward arc: go up once and stop at the top |
 
 ## Before the first run
@@ -67,8 +67,9 @@ When the motors turn off, the arm goes limp and drops.
 - Keep a hand near the power switch.
 
 All motions follow paths planned with collision checking in simulation. The sweep
-and combo follow the planned paths to within 0.8 mm; the combo's short switch
-between them stays over 11 cm from the object. The planner,
+and combo follow the planned paths to within 0.8 mm, except where the combo
+curves from one motion into the other: there the camera is at most 9 mm off the
+planned paths, more than 11 cm from the object. The planner,
 simulation viewer and the four-view scan are on the
 [`full-project`](https://github.com/GrzegorzCzput/robot_demonstracja_skanowanie/tree/full-project)
 branch.
