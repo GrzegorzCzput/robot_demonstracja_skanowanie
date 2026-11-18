@@ -51,3 +51,26 @@ python3 tools/make_combo.py outputs/scan_4_positions.npz outputs/scan_upward_arc
 
 The stops are planned at 1 s (`dwell_seconds`) and land on the planned photo
 poses; follow_trajectory.py `--hold` rescales them. 23.3 s cycle at 1 s stops.
+
+## Wider side-to-side path (ends 30 cm out)
+
+At 115/245 deg the wrist (joint 4) is at its limit, so the end views could not
+move out. `trace_sweep.py` re-solves the side-to-side path with IK on the URDF
+(`ik_tools.py`, same camera rule as plan_scan.goal_for) with the ends at
+125/235 deg, 30 cm radius, 29 cm height and 18 deg roll, and checks joint
+limits, roll, continuity and approximate mesh clearance (object >= 11 mm,
+self >= 20 mm). It writes `outputs/sweep_path_125.npz`, which replaces the scan
+file as the sweep input:
+
+```bash
+cp render_upward_arc.py tools/fk.py
+python3 tools/trace_sweep.py
+python3 tools/make_sweep.py outputs/sweep_path_125.npz outputs/sweep.npz 0.005
+python3 tools/make_combo.py outputs/sweep_path_125.npz outputs/scan_upward_arc.npz outputs/combo.npz 1.0
+python3 tools/make_combo.py outputs/sweep_path_125.npz outputs/scan_upward_arc.npz outputs/combo_stops.npz 1.0 stops
+python3 tools/verify_trajectories.py outputs/sweep.npz outputs/combo.npz outputs/combo_stops.npz
+```
+
+Results: object clearance 70 mm (was 11 mm at the old ends), self 21.9 mm
+(Jan's scan: 24.1 mm by the same vertex measure), roll <= 18 deg, joints at
+least 0.010 rad inside the driver clamp. This is not a cuRobo check.
