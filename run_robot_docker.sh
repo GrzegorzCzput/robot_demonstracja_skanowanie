@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Run the TRLC-DK1 upward-arc demo in Docker. See README.md.
-#   ./run_robot_docker.sh --mode upward_arc
+# Run the TRLC-DK1 scanning demo in Docker. See README.md.
+#   ./run_robot_docker.sh            # combo with photo stops (default)
 #   ./run_robot_docker.sh --dry-run
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"

@@ -205,15 +205,16 @@ def play(robot, t, q, qd, loop, rate, max_error, stop):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--port", default="/dev/ttyACM0", help="Robot USB serial port")
-    p.add_argument("--mode", choices=tuple(FILES), default="upward_arc")
+    p.add_argument("--mode", choices=tuple(FILES), default="combo")
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
     p.add_argument("--speed", type=float,
                    help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
                         "(default: 3.5 upward arc, 1.0 sweep and combo)")
     p.add_argument("--hold", type=float, default=0.5,
                    help="Length of each photo stop in seconds (default: 0.5)")
-    p.add_argument("--stops", action="store_true",
-                   help="Combo: stop at the 8 photo positions (length set by --hold)")
+    p.add_argument("--stops", action=argparse.BooleanOptionalAction,
+                   help="Combo: stop at the 8 photo positions, length set by --hold "
+                        "(default: on for combo; --no-stops for continuous motion)")
     p.add_argument("--once", action="store_true",
                    help="Single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
@@ -223,6 +224,8 @@ def main():
     p.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
     p.add_argument("--dry-run", action="store_true", help="No hardware; simulate the robot")
     a = p.parse_args()
+    if a.stops is None:
+        a.stops = a.mode == "combo"
     if a.stops and a.mode != "combo":
         p.error("--stops is only for --mode combo (the upward arc always stops; the sweep never does)")
     path = a.trajectory or ROOT / ("trajectory/combo_stops.npz" if a.stops else FILES[a.mode])
