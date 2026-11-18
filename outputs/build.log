@@ -1,15 +1,0 @@
-Warp 1.18.0 initialized:
-   CUDA Toolkit 13.4, Driver 13.4
-   Devices:
-     "cpu"      : "CPU"
-     "cuda:0"   : "NVIDIA GeForce RTX 5070 Ti Laptop GPU" (12 GiB, sm_120, mempool enabled)
-   Kernel cache:
-     /home/jan/.cache/warp/1.18.0
-Module curobo._src.geom.transform e63256c load on device 'cuda:0' took 197.36 ms  (cached)
-Fitting spheres:   0%|          | 0/9 [00:00<?, ?it/s]Module curobo._src.geom.sphere_fit.wp_mesh_query fee6b8b load on device 'cuda:0' took 276.01 ms  (cached)
-Fitting spheres:  11%|█         | 1/9 [00:09<01:14,  9.26s/it]sphere_fit: primary method failed, falling back to voxel volume
-sphere_fit: voxel fallback empty (thin shell?), using surface sampling
-only got 10/29 samples!
-Fitting spheres:  33%|███▎      | 3/9 [00:09<00:15,  2.53s/it]Fitting spheres:  44%|████▍     | 4/9 [00:09<00:08,  1.77s/it]Fitting spheres:  56%|█████▌    | 5/9 [00:10<00:05,  1.31s/it]Fitting spheres:  67%|██████▋   | 6/9 [00:10<00:03,  1.00s/it]Fitting spheres:  78%|███████▊  | 7/9 [00:11<00:01,  1.26it/s]Fitting spheres:  89%|████████▉ | 8/9 [00:11<00:00,  1.53it/s]Fitting spheres: 100%|██████████| 9/9 [00:11<00:00,  1.80it/s]Fitting spheres: 100%|██████████| 9/9 [00:11<00:00,  1.30s/it]
-Building robot configuration without computing collision matrix.
-Built /home/jan/Documents/Ideas/robot_demonstracja_skanowanie/config/trlc_dk1_camera.urdf; 71 collision spheres
