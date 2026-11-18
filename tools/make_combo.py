@@ -2,11 +2,12 @@
 
     python3 make_combo.py scan_4_positions.npz upward_arc.npz combo.npz
 
-Cycle (starts and ends at the sweep's middle pose M, at rest):
-  sweep  M -> end A -> end B -> M          constant speed, reversals at the ends
-  switch M -> P (arc at ~40 deg)           short joint-space move, rest to rest
-  arc    P -> top -> bottom -> P           constant speed, reversals at the ends
-  switch P -> M
+Cycle (starts and ends at sweep end A, where the motion reverses anyway):
+  sweep  A -> B -> middle M     constant speed, reversals at the ends
+  switch M -> arc at ~40 deg    without stopping: the sweep joints (1, 5, 6) brake
+                                while the arc joints (2, 3, 4) speed up
+  arc    40 deg -> top -> bottom -> 40 deg
+  switch arc -> M -> A          the same overlap in reverse
 """
 import json
 import sys
@@ -102,55 +103,61 @@ class PathLeg:
         return self.sp(s), self.sp(s, 1) * sd, self.sp(s, 2) * sd**2 + self.sp(s, 1) * sdd
 
 
-class JointLeg:
-    """Rest-to-rest quintic joint move (the short switch between the two paths)."""
-    def __init__(self, qa, qb):
-        self.qa, self.dq = qa, qb - qa
-        d = np.abs(self.dq)
-        self.duration = max(0.2, np.max(np.maximum(1.875 * d / VL, np.sqrt(5.7735 * d / AL))))
 
-    def at(self, t):
-        u = min(t / self.duration, 1.)
-        T = self.duration
-        b = u**3 * (10 - 15 * u + 6 * u**2)
-        b1 = 30 * u**2 * (1 - u)**2
-        b2 = 60 * u * (1 - u) * (1 - 2 * u)
-        return self.qa + self.dq * b, self.dq * b1 / T, self.dq * b2 / T**2
+def quintic(u):
+    return u**3 * (10 - 15 * u + 6 * u**2), 30 * u**2 * (1 - u)**2, 60 * u * (1 - u) * (1 - 2 * u)
 
 
-def build(a_sweep, a_arc):
+def build(a_sweep, a_arc, overlap=1.0):
+    """Legs with start times. The switch between paths overlaps the braking of one
+    path with the speed-up of the other (they use different joints), and closes
+    the small joint gap between them with a quintic over the same window."""
     vs, va = cruise(sweep), cruise(arc)
     L, top = sweep.x[-1], arc.x[-1]
-    return [
-        PathLeg(sweep, s_mid, 0., "rest", "rev", vs, a_sweep),
-        PathLeg(sweep, 0., L, "rev", "rev", vs, a_sweep),
-        PathLeg(sweep, L, s_mid, "rev", "rest", vs, a_sweep),
-        JointLeg(q_M, q_P),
-        PathLeg(arc, s_P, top, "rest", "rev", va, a_arc),
-        PathLeg(arc, top, 0., "rev", "rev", va, a_arc),
-        PathLeg(arc, 0., s_P, "rev", "rest", va, a_arc),
-        JointLeg(q_P, q_M),
-    ]
+    legs = [PathLeg(sweep, 0., L, "rev", "rev", vs, a_sweep),
+            PathLeg(sweep, L, s_mid, "rev", "rest", vs, a_sweep),
+            PathLeg(arc, s_P, top, "rest", "rev", va, a_arc),
+            PathLeg(arc, top, 0., "rev", "rev", va, a_arc),
+            PathLeg(arc, 0., s_P, "rev", "rest", va, a_arc),
+            PathLeg(sweep, s_mid, 0., "rest", "rev", vs, a_sweep)]
+    switches = {2: q_P - q_M, 5: q_M - q_P}  # leg index -> gap closed while it starts
+    starts, gaps, t = [], [], 0.
+    for i, leg in enumerate(legs):
+        if i in switches:
+            O = overlap * min(legs[i - 1].T1, leg.T0)
+            t -= O
+            gaps.append((t, max(O, 0.25), switches[i]))
+        starts.append(t)
+        t += leg.duration
+    return legs, starts, gaps, t
 
 
-def sample(legs):
-    total = sum(l.duration for l in legs)
+def sample(plan):
+    legs, starts, gaps, total = plan
     t = np.r_[np.arange(0, total, DT), total]
-    starts = np.cumsum([0] + [l.duration for l in legs])
-    Q, V, A = [], [], []
-    for ti in t:
-        i = min(np.searchsorted(starts, ti, side="right") - 1, len(legs) - 1)
-        q, v, a = legs[i].at(ti - starts[i])
-        Q.append(q); V.append(v); A.append(a)
-    Q, V, A = map(np.asarray, (Q, V, A))
+    q0 = legs[0].at(0)[0]
+    Q = np.tile(q0, (len(t), 1)); V = np.zeros_like(Q); A = np.zeros_like(Q)
+    for leg, st in zip(legs, starts):
+        qs, qe = leg.at(0)[0], leg.at(leg.duration)[0]
+        for k, ti in enumerate(t):
+            if ti >= st + leg.duration:
+                Q[k] += qe - qs
+            elif ti > st:
+                q, v, a = leg.at(ti - st)
+                Q[k] += q - qs; V[k] += v; A[k] += a
+    for st, dur, gap in gaps:
+        u = np.clip((t - st) / dur, 0, 1)
+        b, b1, b2 = quintic(u)
+        inside = (t > st) & (t < st + dur)
+        Q += np.outer(b, gap); V += np.outer(b1 * inside / dur, gap); A += np.outer(b2 * inside / dur**2, gap)
     Q[-1], V[-1], A[-1] = Q[0], 0., 0.
     return t, Q, V, A
 
 
 def peak_acc(sp, a):
-    """Worst joint acceleration / cap for path acceleration a at cruise on this path."""
-    legs = [PathLeg(sp, 0., sp.x[-1], "rev", "rev", cruise(sp), a)]
-    _, _, _, A = sample(legs)
+    leg = PathLeg(sp, 0., sp.x[-1], "rev", "rev", cruise(sp), a)
+    t = np.r_[np.arange(0, leg.duration, DT), leg.duration]
+    A = np.array([leg.at(x)[2] for x in t])
     return np.max(np.abs(A) / AL)
 
 
@@ -162,19 +169,20 @@ def largest_a(sp):
     return lo
 
 
+OVERLAP = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
 a_sweep, a_arc = largest_a(sweep), largest_a(arc)
-legs = build(a_sweep, a_arc)
-t, Q, V, A = sample(legs)
-# Safety net: shrink both accelerations until the whole cycle is within the caps.
+plan = build(a_sweep, a_arc, OVERLAP)
+t, Q, V, A = sample(plan)
 while np.max(np.abs(A) / AL) > 1 or np.max(np.abs(V) / VL) > 1:
-    a_sweep, a_arc = 0.97 * a_sweep, 0.97 * a_arc
-    legs = build(a_sweep, a_arc)
-    t, Q, V, A = sample(legs)
+    a_sweep, a_arc = 0.98 * a_sweep, 0.98 * a_arc
+    plan = build(a_sweep, a_arc, OVERLAP)
+    t, Q, V, A = sample(plan)
 
-names = ["sweep to end A", "sweep across", "sweep back to middle", "switch to arc",
-         "arc up", "arc down", "arc back to 40 deg", "switch to sweep"]
+legs, starts, gaps, total = plan
+names = ["sweep across", "sweep back to middle", "arc up", "arc down", "arc back to 40 deg", "sweep to end A"]
 report = dict(mode="combo", dwell_seconds=0.0, cycle_seconds=float(t[-1]),
-              legs={n: round(l.duration, 3) for n, l in zip(names, legs)},
+              leg_starts={n: round(s, 3) for n, s in zip(names, starts)},
+              switch_windows=[(round(s, 3), round(d, 3)) for s, d, _ in gaps], overlap=OVERLAP,
               junction_joint_gap_rad=float(np.abs(q_P - q_M).max()),
               sweep_path_accel=a_sweep, arc_path_accel=a_arc, margin_of_caps=MARGIN,
               peak_velocity_fraction=float(np.max(np.abs(V) / scan["velocity_limits"])),
