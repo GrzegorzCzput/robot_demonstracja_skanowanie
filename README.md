@@ -20,11 +20,21 @@ access to the serial port (`sudo usermod -aG dialout $USER`, then log in again).
 ./run_robot.sh --dry-run                                   # no robot: checks and timing only
 ./run_robot.sh --port /dev/ttyACM0 --speed 0.3 --loops 1   # first real test: slow, one pass
 ./run_robot.sh --port /dev/ttyACM0                         # loop the four-view scan
-./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # one upward pass, stops at the top
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc       # up the arc and back down, repeating
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc --speed 2   # same, moves twice as fast
+./run_robot.sh --port /dev/ttyACM0 --mode upward_arc --once      # one pass, stops at the top
 ```
 
 `./run_robot_docker.sh` takes the same arguments and runs everything in Docker
-instead. The arm moves slowly to the first pose after
+instead.
+
+`--speed` scales only the motion; the 1 s photo stops stay 1 s. The maximum is
+set by each trajectory's velocity and acceleration caps: **1.28** for the scan
+(already near its caps) and **3.73** for the upward arc. Higher values are refused.
+The upward arc loops by retracing the planned path in reverse, so it stays on
+the collision-checked samples, with photo stops on the way down as well.
+
+The arm moves slowly to the first pose after
 you press Enter, then plays the trajectory, aborting if any joint is more than
 0.25 rad from the plan.
 
@@ -55,7 +65,8 @@ Open **http://127.0.0.1:8080** and choose **Motion mode**:
   the object center**, starting at 25° and rising as high as the robot can
   continuously reach on that arc. The current top is about **74.4° elevation**
   and **46.6 cm Z** in the robot base frame. The camera remains level and
-  stops at the top. Looping is disabled so it never automatically travels down.
+  stops at the top. The saved plan ends there; on the robot, `follow_trajectory.py`
+  loops it by retracing the same path back down (`--once` disables this).
   Saved as `outputs/scan_upward_arc.npz`.
 
 Both modes take **18 seconds**, including **four 1-second holds**. Motion takes

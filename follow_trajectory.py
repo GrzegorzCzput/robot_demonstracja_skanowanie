@@ -42,12 +42,43 @@ def load(path):
         if names != JOINTS:
             raise ValueError(f"Unexpected joint order {names}")
         t, q, qd = d["time"].astype(float), d["position"].astype(float), d["velocity"].astype(float)
+        qdd = d["acceleration"].astype(float)
+        vl, al = d["velocity_limits"].astype(float), d["acceleration_limits"].astype(float)
         loop = bool(np.array_equal(q[0], q[-1]))
     if np.any(q < LIMITS[:, 0] + LIMIT_BUFFER) or np.any(q > LIMITS[:, 1] - LIMIT_BUFFER):
         raise ValueError("Trajectory enters the driver's joint-limit buffer")
     if np.any(np.diff(t) <= 0):
         raise ValueError("Trajectory time is not strictly increasing")
-    return t, q, qd, loop
+    # Scaling time by s scales velocity by s and acceleration by s**2.
+    with np.errstate(divide="ignore"):
+        max_speed = min(np.min(vl / np.abs(qd).max(0)), np.sqrt(np.min(al / np.abs(qdd).max(0))))
+    return t, q, qd, loop, float(max_speed)
+
+
+def stationary_run(q):
+    """Number of identical samples at the start of q (a hold)."""
+    moving = np.flatnonzero(np.any(q[1:] != q[0], axis=1))
+    return int(moving[0]) + 1 if len(moving) else len(q)
+
+
+def bounce(q, qd):
+    """Open path -> closed cycle: forward, then the same path back in reverse.
+
+    Retracing the planned samples keeps the planner's collision, limit and
+    aiming checks valid. The duplicate holds at the turnarounds are removed so
+    the top and bottom stops stay one hold long.
+    """
+    back, back_v = q[::-1], -qd[::-1]
+    top, bottom = stationary_run(back), stationary_run(q)
+    back, back_v = back[top:len(back) - bottom], back_v[top:len(back) - bottom]
+    return np.vstack([q, back, q[:1]]), np.vstack([qd, back_v, np.zeros((1, 6))])
+
+
+def warp_time(q, qd, dt, speed):
+    """Play moves `speed` times faster while holds keep their real duration."""
+    hold = np.all(q[1:] == q[:-1], axis=1)
+    t = np.r_[0., np.cumsum(np.where(hold, dt, dt / speed))]
+    return t, qd * speed
 
 
 class EscWatcher:
@@ -143,20 +174,20 @@ def move_to(robot, target, max_speed, rate, stop=None):
     return True
 
 
-def play(robot, t, q, qd, loop, speed, rate, max_error, stop):
+def play(robot, t, q, qd, loop, rate, max_error, stop):
     """Stream the trajectory against the wall clock until done or stopped."""
     t0, cycle = time.monotonic(), 0
     while not stop.is_set():
-        elapsed = (time.monotonic() - t0) * speed
+        elapsed = time.monotonic() - t0
         if elapsed >= t[-1]:
             cycle += 1
             print(f"Cycle {cycle} complete", flush=True)
             if not loop:
                 break
-            t0 += t[-1] / speed
+            t0 += t[-1]
             elapsed -= t[-1]
         q_cmd = np.array([np.interp(elapsed, t, q[:, j]) for j in range(6)])
-        v_cmd = np.array([np.interp(elapsed, t, qd[:, j]) for j in range(6)]) * speed
+        v_cmd = np.array([np.interp(elapsed, t, qd[:, j]) for j in range(6)])
         robot.command_joint_pos(q_cmd)
         robot.set_velocity_feedforward(v_cmd)
         error = np.abs(robot.get_joint_state()["pos"] - q_cmd)
@@ -175,7 +206,10 @@ def main():
     p.add_argument("--port", default="/dev/ttyACM0", help="Robot USB serial port")
     p.add_argument("--mode", choices=tuple(FILES), default="scan")
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
-    p.add_argument("--speed", type=float, default=1.0, help="Playback speed factor, 0.1-1.0")
+    p.add_argument("--speed", type=float, default=1.0,
+                   help="Motion speed factor, 0.1 up to the trajectory's limit (holds stay 1 s)")
+    p.add_argument("--once", action="store_true",
+                   help="Upward arc: single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
     p.add_argument("--rate", type=float, default=100., help="Command rate in Hz")
     p.add_argument("--approach-speed", type=float, default=0.3, help="Peak rad/s for approach/return")
@@ -183,11 +217,17 @@ def main():
     p.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
     p.add_argument("--dry-run", action="store_true", help="No hardware; simulate the robot")
     a = p.parse_args()
-    if not 0.1 <= a.speed <= 1.0:
-        p.error("--speed must be between 0.1 and 1.0")
-
     path = a.trajectory or ROOT / "outputs" / FILES[a.mode]
-    t, q, qd, loop = load(path)
+    t, q, qd, loop, max_speed = load(path)
+    max_speed = np.floor(max_speed * 100) / 100
+    if not 0.1 <= a.speed <= max_speed:
+        p.error(f"--speed must be between 0.1 and {max_speed:.2f} for {path.name} "
+                "(its velocity and acceleration caps)")
+    if not loop and not a.once:
+        q, qd = bounce(q, qd)
+        loop = True
+    duration_1x = (len(q) - 1) * (t[1] - t[0])
+    t, qd = warp_time(q, qd, t[1] - t[0], a.speed)
     if a.loops:
         # Repeat the cycle N times and play it once.
         n = a.loops if loop else 1
@@ -195,8 +235,8 @@ def main():
         q = np.vstack([q[:-1]] * n + [q[-1:]])
         qd = np.vstack([qd[:-1]] * n + [qd[-1:]])
         loop = False
-    print(f"{path.name}: {t[-1]:.1f} s per pass at 1x, "
-          f"{'looping' if loop else 'single pass'}, playing at {a.speed:.1f}x", flush=True)
+    print(f"{path.name}: {'looping' if loop else 'single pass'}, speed {a.speed:.2f}x "
+          f"(max {max_speed:.2f}x), cycle {duration_1x:.1f} s at 1x -> {t[-1]:.1f} s", flush=True)
 
     robot = FakeRobot([0., 1.4, 2.3, 0.3, 0., 0.]) if a.dry_run else connect_robot(a.port)
     stop = threading.Event()
@@ -211,7 +251,7 @@ def main():
                 print("Moving to the first pose. Esc = go home and disable, Ctrl+C = go home.", flush=True)
                 if move_to(robot, q[0], a.approach_speed, a.rate, stop):
                     print("Playing. Esc = go home and disable, Ctrl+C = go home.", flush=True)
-                    play(robot, t, q, qd, loop, a.speed, a.rate, a.max_error, stop)
+                    play(robot, t, q, qd, loop, a.rate, a.max_error, stop)
             if stop.is_set():
                 robot.command_joint_pos(robot.get_joint_state()["pos"])
                 print("Esc pressed.", flush=True)
