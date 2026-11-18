@@ -13,6 +13,7 @@ The approach and return moves are straight joint-space interpolations and are
 NOT collision checked. Start and finish the arm in a clear pose above the table.
 """
 import argparse
+import json
 import select
 import sys
 import termios
@@ -45,6 +46,7 @@ def load(path):
         qdd = d["acceleration"].astype(float)
         vl, al = d["velocity_limits"].astype(float), d["acceleration_limits"].astype(float)
         loop = bool(np.array_equal(q[0], q[-1]))
+        dwell = float(json.loads(str(d["metadata_json"]))["dwell_seconds"])
     if np.any(q < LIMITS[:, 0] + LIMIT_BUFFER) or np.any(q > LIMITS[:, 1] - LIMIT_BUFFER):
         raise ValueError("Trajectory enters the driver's joint-limit buffer")
     if np.any(np.diff(t) <= 0):
@@ -52,7 +54,7 @@ def load(path):
     # Scaling time by s scales velocity by s and acceleration by s**2.
     with np.errstate(divide="ignore"):
         max_speed = min(np.min(vl / np.abs(qd).max(0)), np.sqrt(np.min(al / np.abs(qdd).max(0))))
-    return t, q, qd, loop, float(max_speed)
+    return t, q, qd, loop, float(max_speed), dwell
 
 
 def stationary_run(q):
@@ -74,10 +76,10 @@ def bounce(q, qd):
     return np.vstack([q, back, q[:1]]), np.vstack([qd, back_v, np.zeros((1, 6))])
 
 
-def warp_time(q, qd, dt, speed):
-    """Play moves `speed` times faster while holds keep their real duration."""
+def warp_time(q, qd, dt, speed, hold_scale=1.0):
+    """Play moves `speed` times faster; holds last `hold_scale` times their planned length."""
     hold = np.all(q[1:] == q[:-1], axis=1)
-    t = np.r_[0., np.cumsum(np.where(hold, dt, dt / speed))]
+    t = np.r_[0., np.cumsum(np.where(hold, dt * hold_scale, dt / speed))]
     return t, qd * speed
 
 
@@ -206,6 +208,8 @@ def main():
     p.add_argument("--speed", type=float,
                    help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
                         "(default: 3.5)")
+    p.add_argument("--hold", type=float, default=0.5,
+                   help="Length of each photo stop in seconds (default: 0.5)")
     p.add_argument("--once", action="store_true",
                    help="Single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
@@ -218,7 +222,9 @@ def main():
     path = a.trajectory or ROOT / FILES[a.mode]
     if a.speed is None:
         a.speed = DEFAULT_SPEED[a.mode]
-    t, q, qd, loop, max_speed = load(path)
+    t, q, qd, loop, max_speed, dwell = load(path)
+    if not 0 <= a.hold <= 10:
+        p.error("--hold must be between 0 and 10 seconds")
     max_speed = np.floor(max_speed * 100) / 100
     if not 0.1 <= a.speed <= max_speed:
         p.error(f"--speed must be between 0.1 and {max_speed:.2f} for {path.name} "
@@ -226,8 +232,7 @@ def main():
     if not loop and not a.once:
         q, qd = bounce(q, qd)
         loop = True
-    duration_1x = (len(q) - 1) * (t[1] - t[0])
-    t, qd = warp_time(q, qd, t[1] - t[0], a.speed)
+    t, qd = warp_time(q, qd, t[1] - t[0], a.speed, a.hold / dwell)
     if a.loops:
         # Repeat the cycle N times and play it once.
         n = a.loops if loop else 1
@@ -236,7 +241,7 @@ def main():
         qd = np.vstack([qd[:-1]] * n + [qd[-1:]])
         loop = False
     print(f"{path.name}: {'looping' if loop else 'single pass'}, speed {a.speed:.2f}x "
-          f"(max {max_speed:.2f}x), cycle {duration_1x:.1f} s at 1x -> {t[-1]:.1f} s", flush=True)
+          f"(max {max_speed:.2f}x), {a.hold:g} s stops, cycle {t[-1]:.1f} s", flush=True)
 
     robot = FakeRobot([0., 1.4, 2.3, 0.3, 0., 0.]) if a.dry_run else connect_robot(a.port)
     stop = threading.Event()

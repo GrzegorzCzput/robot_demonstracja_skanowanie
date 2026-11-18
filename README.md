@@ -1,6 +1,6 @@
 # TRLC-DK1 scanning demo
 
-The arm moves a camera (phone) up an arc around an object, stopping for 1 s at
+The arm moves a camera (phone) up an arc around an object, stopping for 0.5 s at
 four photo positions, then comes back down and repeats. The camera always points
 at the object center and stays 38 cm from it.
 
@@ -42,7 +42,9 @@ When the motors turn off, the arm goes limp and drops.
 | Option | Meaning |
 |---|---|
 | `--port /dev/ttyACM1` | The robot isn't on `/dev/ttyACM0`. Find it with `ls /dev/ttyACM*` |
-| `--speed 1.5` | Slower motion (the default is 3.5, the maximum is 3.73). Photo stops stay 1 s |
+| `--speed 1.5` | Slower motion (the default is 3.5, the maximum is 3.73) |
+| `--hold 1` | Photo stop length in seconds (the default is 0.5) |
+| `--loops 320` | Stop after 320 up-and-down cycles (11 s each by default) |
 | `--once` | Go up once and stop at the top |
 
 ## Before the first run
