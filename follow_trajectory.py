@@ -1,4 +1,4 @@
-"""Play the planned upward-arc trajectory on a real TRLC-DK1 arm connected over USB.
+"""Play a planned trajectory (upward arc or side-to-side sweep) on a real TRLC-DK1 arm over USB.
 
 Usually started through ./run_robot_docker.sh, which passes these options on.
 
@@ -25,10 +25,11 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent
-FILES = {"upward_arc": "trajectory/upward_arc.npz"}
+FILES = {"upward_arc": "trajectory/upward_arc.npz", "sweep": "trajectory/sweep.npz"}
 # The upward arc moves slowly at 1x; 3.5x stays under its 3.73x cap
 # (about 85% of the assumed 6.5 rad/s^2 acceleration cap).
-DEFAULT_SPEED = {"upward_arc": 3.5}
+# The sweep is already timed at about 95% of the caps (no stops, constant speed).
+DEFAULT_SPEED = {"upward_arc": 3.5, "sweep": 1.0}
 JOINTS = [f"joint{i}" for i in range(1, 7)]
 # Same as trlc_dk1_control config.joint_pos_limits / URDF; the driver silently
 # clips 0.05 rad inside these, so refuse trajectories that would be clipped.
@@ -207,7 +208,7 @@ def main():
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
     p.add_argument("--speed", type=float,
                    help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
-                        "(default: 3.5)")
+                        "(default: 3.5 upward arc, 1.0 sweep)")
     p.add_argument("--hold", type=float, default=0.5,
                    help="Length of each photo stop in seconds (default: 0.5)")
     p.add_argument("--once", action="store_true",
@@ -232,7 +233,7 @@ def main():
     if not loop and not a.once:
         q, qd = bounce(q, qd)
         loop = True
-    t, qd = warp_time(q, qd, t[1] - t[0], a.speed, a.hold / dwell)
+    t, qd = warp_time(q, qd, t[1] - t[0], a.speed, a.hold / dwell if dwell else 1.0)
     if a.loops:
         # Repeat the cycle N times and play it once.
         n = a.loops if loop else 1
@@ -241,7 +242,7 @@ def main():
         qd = np.vstack([qd[:-1]] * n + [qd[-1:]])
         loop = False
     print(f"{path.name}: {'looping' if loop else 'single pass'}, speed {a.speed:.2f}x "
-          f"(max {max_speed:.2f}x), {a.hold:g} s stops, cycle {t[-1]:.1f} s", flush=True)
+          f"(max {max_speed:.2f}x), {f'{a.hold:g} s stops' if dwell else 'no stops'}, cycle {t[-1]:.1f} s", flush=True)
 
     robot = FakeRobot([0., 1.4, 2.3, 0.3, 0., 0.]) if a.dry_run else connect_robot(a.port)
     stop = threading.Event()
