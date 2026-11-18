@@ -5,12 +5,12 @@ There are three motions:
 
 - **Upward arc** (`--mode upward_arc`): up an arc 38 cm from the object, stopping
   for 0.5 s at four photo positions, then back down, repeating.
-- **Sweep** (`--mode sweep`): side to side around the object (130°) at constant
+- **Sweep** (`--mode sweep`): side to side around the object (110°) at constant
   speed, with no stops. It only slows down to turn around at the two ends.
-  One cycle takes 5.7 s.
+  One cycle takes 5.1 s. At the two ends the camera is 30 cm from the object.
 - **Combo** (`--mode combo`): side to side, then up and down, repeating. Same
   constant speed with no photo stops; it curves from one motion into the other
-  in the middle without stopping. One cycle takes 9.5 s. Add `--stops` to stop
+  in the middle without stopping. One cycle takes 9.3 s. Add `--stops` to stop
   at the 8 photo positions (19.4 s per cycle with the default 0.5 s stops).
 
 ![Robot at the four photo positions](docs/upward_arc.png)
@@ -57,7 +57,7 @@ When the motors turn off, the arm goes limp and drops.
 | `--speed 1.5` | Slower or faster motion. Upward arc: default 3.5, max 3.73. Sweep and combo: default 1.0, max 1.02 |
 | `--stops` | Combo: stop at the 8 photo positions |
 | `--hold 1` | Photo stop length in seconds, upward arc and `combo --stops` (the default is 0.5) |
-| `--loops 320` | Stop after 320 cycles (arc 11 s, sweep 5.7 s, combo 9.5 s each) |
+| `--loops 320` | Stop after 320 cycles (arc 11 s, sweep 5.1 s, combo 9.3 s each) |
 | `--once` | Upward arc: go up once and stop at the top |
 
 ## Before the first run
@@ -69,10 +69,12 @@ When the motors turn off, the arm goes limp and drops.
   without the object on the table.
 - Keep a hand near the power switch.
 
-All motions follow paths planned with collision checking in simulation. The sweep
-and combo follow the planned paths to within 0.8 mm, except where the combo
-curves from one motion into the other: there the camera is at most 9 mm off the
-planned paths, more than 11 cm from the object. The planner,
-simulation viewer and the four-view scan are on the
+The upward arc was planned with collision checking in simulation (cuRobo). The
+side-to-side path was then re-solved from the robot model, with its ends moved
+out to 30 cm, and checked for joint limits, camera aim and approximate mesh
+clearance (at least 70 mm from the object, 22 mm between robot parts). Where
+the combo curves from one motion into the other, the camera is at most 22 mm
+off the planned paths, more than 11 cm from the object. The original planner,
+simulation viewer, the generators for these trajectories and the four-view scan are on the
 [`full-project`](https://github.com/GrzegorzCzput/robot_demonstracja_skanowanie/tree/full-project)
 branch.
