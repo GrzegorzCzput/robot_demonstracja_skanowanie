@@ -1,4 +1,4 @@
-"""Play a planned trajectory (upward arc or side-to-side sweep) on a real TRLC-DK1 arm over USB.
+"""Play a planned trajectory (upward arc, sweep or both combined) on a real TRLC-DK1 arm over USB.
 
 Usually started through ./run_robot_docker.sh, which passes these options on.
 
@@ -25,11 +25,12 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent
-FILES = {"upward_arc": "trajectory/upward_arc.npz", "sweep": "trajectory/sweep.npz"}
+FILES = {"upward_arc": "trajectory/upward_arc.npz", "sweep": "trajectory/sweep.npz",
+         "combo": "trajectory/combo.npz"}
 # The upward arc moves slowly at 1x; 3.5x stays under its 3.73x cap
 # (about 85% of the assumed 6.5 rad/s^2 acceleration cap).
-# The sweep is already timed at about 95% of the caps (no stops, constant speed).
-DEFAULT_SPEED = {"upward_arc": 3.5, "sweep": 1.0}
+# Sweep and combo are already timed at about 95% of the caps (constant speed, no stops).
+DEFAULT_SPEED = {"upward_arc": 3.5, "sweep": 1.0, "combo": 1.0}
 JOINTS = [f"joint{i}" for i in range(1, 7)]
 # Same as trlc_dk1_control config.joint_pos_limits / URDF; the driver silently
 # clips 0.05 rad inside these, so refuse trajectories that would be clipped.
@@ -208,7 +209,7 @@ def main():
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
     p.add_argument("--speed", type=float,
                    help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
-                        "(default: 3.5 upward arc, 1.0 sweep)")
+                        "(default: 3.5 upward arc, 1.0 sweep and combo)")
     p.add_argument("--hold", type=float, default=0.5,
                    help="Length of each photo stop in seconds (default: 0.5)")
     p.add_argument("--once", action="store_true",
