@@ -87,6 +87,9 @@ corresponding to the older cuRobo `MotionGen` API. It is a local research fork;
 # Verify the saved trajectory and export a plot.
 .venv/bin/python -m unittest test_trajectory -v
 .venv/bin/python plot_trajectory.py --mode all
+
+# Side-view figure of the upward arc (numpy, scipy, matplotlib only).
+python3 render_upward_arc.py   # -> outputs/upward_arc_motion.png
 ```
 
 ## Motion and limits
