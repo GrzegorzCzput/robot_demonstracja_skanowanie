@@ -1,0 +1,168 @@
+Planning mode: upward_arc
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.4
+   Devices:
+     "cpu"      : "CPU"
+     "cuda:0"   : "NVIDIA GeForce RTX 5070 Ti Laptop GPU" (12 GiB, sm_120, mempool enabled)
+   Kernel cache:
+     /home/jan/.cache/warp/1.18.0
+Module curobo._src.geom.transform e63256c load on device 'cuda:0' took 1.06 ms  (cached)
+cuRobo planner initialized
+Module goalset_pose_distance_1_0_dceffa2f dceffa2 load on device 'cuda:0' took 0.69 ms  (cached)
+Module _lm_solve_tiled_6_12_2a7debec 98fbcb3 load on device 'cuda:0' took 157.07 ms  (cached)
+Module curobo._src.cost.wp_cspace_position 720cc8f load on device 'cuda:0' took 0.50 ms  (cached)
+Module curobo._src.geom.collision.wp_collision_kernel 7f046fb load on device 'cuda:0' took 0.64 ms  (cached)
+Module curobo._src.cost.wp_torch_cspace_dist 131408b load on device 'cuda:0' took 0.44 ms  (cached)
+Upward reachability search: 27.00 degrees reachable
+Upward reachability search: 29.00 degrees reachable
+Upward reachability search: 31.00 degrees reachable
+Upward reachability search: 33.00 degrees reachable
+Upward reachability search: 35.00 degrees reachable
+Upward reachability search: 37.00 degrees reachable
+Upward reachability search: 39.00 degrees reachable
+Upward reachability search: 41.00 degrees reachable
+Upward reachability search: 43.00 degrees reachable
+Upward reachability search: 45.00 degrees reachable
+Upward reachability search: 47.00 degrees reachable
+Upward reachability search: 49.00 degrees reachable
+Upward reachability search: 51.00 degrees reachable
+Upward reachability search: 53.00 degrees reachable
+Upward reachability search: 55.00 degrees reachable
+Upward reachability search: 57.00 degrees reachable
+Upward reachability search: 59.00 degrees reachable
+Upward reachability search: 61.00 degrees reachable
+Upward reachability search: 63.00 degrees reachable
+Upward reachability search: 65.00 degrees reachable
+Upward reachability search: 67.00 degrees reachable
+Upward reachability search: 69.00 degrees reachable
+Upward reachability search: 71.00 degrees reachable
+Upward reachability search: 73.00 degrees reachable
+Upward limit: 74.922 degrees; planned top: 74.422 degrees
+First view: [-4.2281681089662015e-07, 0.0737609714269638, 0.2562929391860962, -0.35706430673599243, -4.1838575270958245e-07, -7.473659024981316e-08]
+Gravity-referenced camera guide 10/198
+Gravity-referenced camera guide 20/198
+Gravity-referenced camera guide 30/198
+Gravity-referenced camera guide 40/198
+Gravity-referenced camera guide 50/198
+Gravity-referenced camera guide 60/198
+Gravity-referenced camera guide 70/198
+Gravity-referenced camera guide 80/198
+Gravity-referenced camera guide 90/198
+Gravity-referenced camera guide 100/198
+Gravity-referenced camera guide 110/198
+Gravity-referenced camera guide 120/198
+Gravity-referenced camera guide 130/198
+Gravity-referenced camera guide 140/198
+Gravity-referenced camera guide 150/198
+Gravity-referenced camera guide 160/198
+Gravity-referenced camera guide 170/198
+Gravity-referenced camera guide 180/198
+Gravity-referenced camera guide 190/198
+Gravity-referenced camera guide 198/198
+Leg 1: 67 planner samples; retimed to 3.94s
+Leg 2: 67 planner samples; retimed to 3.94s
+Leg 3: 67 planner samples; retimed to 6.12s
+{
+  "planner": "cuRobo collision-aware IK with a gravity-referenced Cartesian guide",
+  "mode": "upward_arc",
+  "loop_allowed": false,
+  "samples": 901,
+  "duration_seconds": 18.0,
+  "sample_dt": 0.02,
+  "camera_frame": "camera",
+  "camera_optical_axis": "+X",
+  "dwell_seconds": 1.0,
+  "target_duration_seconds": 18.0,
+  "move_durations_seconds": [
+    3.94,
+    3.94,
+    6.12
+  ],
+  "view_parameters_deg": [
+    25.0,
+    41.47395833333333,
+    57.947916666666664,
+    74.421875
+  ],
+  "view_rolls_deg": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "view_heights_m": [
+    0.26059493946146584,
+    0.35166623652535545,
+    0.4220750935414076,
+    0.46604076372762615
+  ],
+  "view_radii_m": [
+    0.344396959073927,
+    0.28471758883701553,
+    0.2016621782097317,
+    0.10204978828834577
+  ],
+  "camera_guide_step_deg": 0.25,
+  "max_abs_camera_roll_deg": 1.5968107273239607e-07,
+  "camera_roll_limit_deg": 5.0,
+  "min_image_down_alignment": 0.2685518329748983,
+  "max_continuous_aim_error_deg": 0.0021272744856017547,
+  "image_down_axis": "camera -Z (optical image +Y)",
+  "return_path": "none; stop at top",
+  "peak_velocity_rad_s": [
+    4.746989856954616e-05,
+    0.31659387118949944,
+    0.41789909323824653,
+    0.2568380600859651,
+    4.596068943082289e-05,
+    1.3850350113424085e-05
+  ],
+  "peak_acceleration_rad_s2": [
+    0.003716258165219269,
+    0.46412595106143373,
+    0.46649325481385195,
+    0.305156881331911,
+    0.0035990965415321893,
+    0.0015040192776358647
+  ],
+  "velocity_limit_rad_s": [
+    2.7,
+    2.7,
+    2.7,
+    2.7,
+    2.7,
+    2.7
+  ],
+  "acceleration_limit_rad_s2": [
+    6.5,
+    6.5,
+    6.5,
+    6.5,
+    6.5,
+    6.5
+  ],
+  "velocity_scale": 0.5,
+  "acceleration_scale": 1.0,
+  "acceleration_reference_source": "assumed_demo_reference_not_hardware_rating",
+  "min_world_clearance_m": 0.013899847865104675,
+  "min_self_clearance_m": 0.020976269617676735,
+  "view_pointing_error_deg": [
+    3.1945284701301985e-06,
+    1.1581149199548762e-05,
+    7.540324677666867e-06,
+    1.0491346209810032e-05
+  ],
+  "closed_loop": false,
+  "robot_source_commit": "12f5368aefd0381461f2c7ffbb5611b4e8c90de9",
+  "retiming": "C2 cubic path + septic time blend; continuous Bernstein derivative bounds",
+  "collision_validation": "all saved samples, fitted robot spheres; configured neighbor exclusions",
+  "arc_radius_m": 0.38,
+  "arc_azimuth_deg": 180.0,
+  "max_radius_error_m": 1.5341246501987538e-05,
+  "reachable_elevation_limit_deg": 74.921875,
+  "first_unreachable_elevation_deg": 74.9296875,
+  "endpoint_margin_deg": 0.5,
+  "maximum_camera_height_m": 0.466040700674057,
+  "minimum_camera_z_step_m": -8.940696716308594e-08
+}
+Saved /home/jan/Documents/Ideas/robot_demonstracja_skanowanie/outputs/scan_upward_arc.npz

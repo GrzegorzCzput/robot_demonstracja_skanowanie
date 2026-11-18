@@ -1,0 +1,19 @@
+╭──────────────── viser ────────────────╮
+│             ╷                         │
+│   HTTP      │ http://127.0.0.1:8080   │
+│   Websocket │ ws://127.0.0.1:8080     │
+│             ╵                         │
+╰───────────────────────────────────────╯
+Viser ready: http://127.0.0.1:8080 — two motion modes
+(viser) Connection opened (0, 1 total), 645 persistent messages
+(viser) Connection closed (0, 0 total)
+(viser) Connection opened (1, 1 total), 645 persistent messages
+(viser) Connection opened (2, 2 total), 645 persistent messages
+(viser) Connection closed (1, 1 total)
+(viser) Connection closed (2, 0 total)
+(viser) Connection opened (3, 1 total), 645 persistent messages
+(viser) Connection closed (3, 0 total)
+(viser) Connection opened (4, 1 total), 648 persistent messages
+(viser) Connection opened (5, 2 total), 648 persistent messages
+(viser) Connection closed (5, 1 total)
+(viser) Connection closed (4, 0 total)

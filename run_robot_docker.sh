@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Same as run_robot.sh, but inside Docker (nothing installed on the host).
-#   ./run_robot_docker.sh --port /dev/ttyACM0 --speed 0.3 --loops 1
+# Run the TRLC-DK1 upward-arc demo in Docker. See README.md.
+#   ./run_robot_docker.sh --mode upward_arc
 #   ./run_robot_docker.sh --dry-run
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-IMAGE=trlc-dk1-follow
+IMAGE=trlc-dk1-demo
 
-docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" .
+# Build the image the first time (takes a minute or two).
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "Building the Docker image (first run only)..."
+  docker build -t "$IMAGE" - < Dockerfile
+fi
 
+# Find the robot's USB port from --port, or use /dev/ttyACM0.
 port=/dev/ttyACM0
 dry=0
 args=("$@")
@@ -22,7 +27,9 @@ done
 device=()
 if [[ $dry == 0 ]]; then
   if [[ ! -e $port ]]; then
-    echo "Robot port $port not found. Plug in the arm or pass --port (see: ls /dev/ttyACM* /dev/ttyUSB*)." >&2
+    echo "Robot not found at $port." >&2
+    echo "Plug in the arm, find its port with:  ls /dev/ttyACM* /dev/ttyUSB*" >&2
+    echo "then run:  $0 --port /dev/ttyACM1 $*" >&2
     exit 1
   fi
   device=(--device "$port")

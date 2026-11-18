@@ -1,13 +1,10 @@
-"""Play a planned NPZ trajectory on a real TRLC-DK1 arm connected over USB.
+"""Play the planned upward-arc trajectory on a real TRLC-DK1 arm connected over USB.
 
-    python follow_trajectory.py --port /dev/ttyACM0             # four-view scan, loops until Ctrl+C
-    python follow_trajectory.py --port /dev/ttyACM0 --speed 0.5 # half speed (recommended first run)
-    python follow_trajectory.py --mode upward_arc               # one pass, stops at the top
-    python follow_trajectory.py --dry-run                       # no hardware; checks and timing only
+Usually started through ./run_robot_docker.sh, which passes these options on.
 
 Sequence: connect -> slow joint-space move to the first trajectory sample ->
-play (looping if the trajectory allows it) -> Esc or Ctrl+C -> slow move back
-to the pose the arm had at startup -> disconnect.
+play up and back down, repeating -> Esc or Ctrl+C -> slow move back to the pose
+the arm had at startup -> disconnect.
 
 Esc: return to the startup pose, then disable the motors without asking.
 Ctrl+C: return to the startup pose, then ask before disabling the motors.
@@ -27,10 +24,10 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent
-FILES = {"scan": "scan_4_positions.npz", "upward_arc": "scan_upward_arc.npz"}
-# Default --speed per mode. The upward arc moves slowly at 1x; 3.5x stays under
-# its 3.73x cap (about 85% of the assumed 6.5 rad/s^2 acceleration cap).
-DEFAULT_SPEED = {"scan": 1.0, "upward_arc": 3.5}
+FILES = {"upward_arc": "trajectory/upward_arc.npz"}
+# The upward arc moves slowly at 1x; 3.5x stays under its 3.73x cap
+# (about 85% of the assumed 6.5 rad/s^2 acceleration cap).
+DEFAULT_SPEED = {"upward_arc": 3.5}
 JOINTS = [f"joint{i}" for i in range(1, 7)]
 # Same as trlc_dk1_control config.joint_pos_limits / URDF; the driver silently
 # clips 0.05 rad inside these, so refuse trajectories that would be clipped.
@@ -129,11 +126,8 @@ class FakeRobot:
 
 
 def connect_robot(port):
-    try:
-        from trlc_dk1_control import DK1Robot, DK1_DEFAULT_CONFIG
-    except ImportError:
-        sys.path.insert(0, str(ROOT / "third_party/trlc-dk1"))
-        from trlc_dk1_control import DK1Robot, DK1_DEFAULT_CONFIG
+    # Official driver, installed in the Docker image (see Dockerfile).
+    from trlc_dk1_control import DK1Robot, DK1_DEFAULT_CONFIG
     robot = DK1Robot(DK1_DEFAULT_CONFIG(port))
 
     # DK1Robot always sends a zero velocity target, so its damping term (kd)
@@ -207,13 +201,13 @@ def play(robot, t, q, qd, loop, rate, max_error, stop):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--port", default="/dev/ttyACM0", help="Robot USB serial port")
-    p.add_argument("--mode", choices=tuple(FILES), default="scan")
+    p.add_argument("--mode", choices=tuple(FILES), default="upward_arc")
     p.add_argument("--trajectory", type=Path, help="Override the NPZ file for --mode")
     p.add_argument("--speed", type=float,
                    help="Motion speed factor, 0.1 up to the trajectory's limit; holds stay 1 s "
-                        "(default: 1.0 scan, 3.5 upward arc)")
+                        "(default: 3.5)")
     p.add_argument("--once", action="store_true",
-                   help="Upward arc: single pass, stop at the top (default: go back down and repeat)")
+                   help="Single pass, stop at the top (default: go back down and repeat)")
     p.add_argument("--loops", type=int, default=0, help="Stop after N cycles (0 = until Ctrl+C)")
     p.add_argument("--rate", type=float, default=100., help="Command rate in Hz")
     p.add_argument("--approach-speed", type=float, default=0.3, help="Peak rad/s for approach/return")
@@ -221,7 +215,7 @@ def main():
     p.add_argument("--yes", action="store_true", help="Skip the confirmation prompt")
     p.add_argument("--dry-run", action="store_true", help="No hardware; simulate the robot")
     a = p.parse_args()
-    path = a.trajectory or ROOT / "outputs" / FILES[a.mode]
+    path = a.trajectory or ROOT / FILES[a.mode]
     if a.speed is None:
         a.speed = DEFAULT_SPEED[a.mode]
     t, q, qd, loop, max_speed = load(path)
