@@ -8,6 +8,8 @@ Cycle (starts and ends at sweep end A, where the motion reverses anyway):
                                 while the arc joints (2, 3, 4) speed up
   arc    40 deg -> top -> bottom -> 40 deg
   switch arc -> M -> A          the same overlap in reverse
+
+Add 'stops' as the 5th argument for photo stops at the 8 view positions.
 """
 import json
 import sys
@@ -18,6 +20,7 @@ from scipy.optimize import brentq
 
 SCAN, ARC, OUT = sys.argv[1:4]
 MARGIN, THIN, DT = 0.95, 0.03, 0.02
+DWELL = 1.0  # planned photo stop length; follow_trajectory --hold rescales it
 
 scan, arc_src = np.load(SCAN), np.load(ARC)
 VL = scan["velocity_limits"] * MARGIN
@@ -108,19 +111,59 @@ def quintic(u):
     return u**3 * (10 - 15 * u + 6 * u**2), 30 * u**2 * (1 - u)**2, 60 * u * (1 - u) * (1 - 2 * u)
 
 
-def build(a_sweep, a_arc, overlap=1.0):
+class HoldLeg:
+    """Photo stop: stand still for DWELL seconds (follow_trajectory --hold rescales it)."""
+    def __init__(self, q):
+        self.q, self.duration, self.T0, self.T1 = q, DWELL, 0., 0.
+
+    def at(self, t):
+        return self.q, np.zeros(6), np.zeros(6)
+
+
+def path_s(sp, q):
+    """Path parameter of the spline point closest (in joints) to planned pose q."""
+    grid = np.linspace(0, sp.x[-1], 40001)
+    return grid[np.argmin(np.abs(sp(grid) - q).max(1))]
+
+
+# Photo positions: the four sweep views (A=115, 150, 210, B=245 deg) and the four arc views.
+sweep_views = [0.] + [path_s(sweep, scan["position"][i]) for i in scan["view_indices"][1:3]] + [sweep.x[-1]]
+arc_views = [0.] + [path_s(arc, aq[i]) for i in arc_src["view_indices"][1:3]] + [arc.x[-1]]
+
+
+def build(a_sweep, a_arc, overlap=1.0, stops=False):
     """Legs with start times. The switch between paths overlaps the braking of one
     path with the speed-up of the other (they use different joints), and closes
-    the small joint gap between them with a quintic over the same window."""
+    the small joint gap between them with a quintic over the same window.
+
+    stops=True: stop at the four sweep views on the pass from A to B and at the
+    four arc views on the way down from the top; everything else is unchanged."""
     vs, va = cruise(sweep), cruise(arc)
     L, top = sweep.x[-1], arc.x[-1]
-    legs = [PathLeg(sweep, 0., L, "rev", "rev", vs, a_sweep),
-            PathLeg(sweep, L, s_mid, "rev", "rest", vs, a_sweep),
-            PathLeg(arc, s_P, top, "rest", "rev", va, a_arc),
-            PathLeg(arc, top, 0., "rev", "rev", va, a_arc),
-            PathLeg(arc, 0., s_P, "rev", "rest", va, a_arc),
-            PathLeg(sweep, s_mid, 0., "rest", "rev", vs, a_sweep)]
-    switches = {2: q_P - q_M, 5: q_M - q_P}  # leg index -> gap closed while it starts
+    if not stops:
+        legs = [PathLeg(sweep, 0., L, "rev", "rev", vs, a_sweep),
+                PathLeg(sweep, L, s_mid, "rev", "rest", vs, a_sweep),
+                PathLeg(arc, s_P, top, "rest", "rev", va, a_arc),
+                PathLeg(arc, top, 0., "rev", "rev", va, a_arc),
+                PathLeg(arc, 0., s_P, "rev", "rest", va, a_arc),
+                PathLeg(sweep, s_mid, 0., "rest", "rev", vs, a_sweep)]
+    else:
+        legs = []
+        for x, y in zip(sweep_views[:-1], sweep_views[1:]):          # A -> 150 -> 210 -> B
+            legs += [HoldLeg(sweep(x)), PathLeg(sweep, x, y, "rest", "rest", vs, a_sweep)]
+        legs += [HoldLeg(sweep(L)), PathLeg(sweep, L, s_mid, "rest", "rest", vs, a_sweep),
+                 PathLeg(arc, s_P, top, "rest", "rest", va, a_arc)]
+        down = arc_views[::-1]                                         # top -> ... -> bottom
+        for x, y in zip(down[:-1], down[1:]):
+            legs += [HoldLeg(arc(x)), PathLeg(arc, x, y, "rest", "rest", va, a_arc)]
+        legs += [HoldLeg(arc(0.)), PathLeg(arc, 0., s_P, "rest", "rest", va, a_arc),
+                 PathLeg(sweep, s_mid, 0., "rest", "rest", vs, a_sweep)]
+    # A switch is where an arc leg follows a sweep leg ending at the middle, or vice versa.
+    switches = {}
+    for i in range(1, len(legs)):
+        prev, leg = legs[i - 1], legs[i]
+        if isinstance(prev, PathLeg) and isinstance(leg, PathLeg) and prev.sp is not leg.sp:
+            switches[i] = (q_P - q_M) if leg.sp is arc else (q_M - q_P)
     starts, gaps, t = [], [], 0.
     for i, leg in enumerate(legs):
         if i in switches:
@@ -170,18 +213,18 @@ def largest_a(sp):
 
 
 OVERLAP = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
+STOPS = len(sys.argv) > 5 and sys.argv[5] == 'stops'
 a_sweep, a_arc = largest_a(sweep), largest_a(arc)
-plan = build(a_sweep, a_arc, OVERLAP)
+plan = build(a_sweep, a_arc, OVERLAP, STOPS)
 t, Q, V, A = sample(plan)
 while np.max(np.abs(A) / AL) > 1 or np.max(np.abs(V) / VL) > 1:
     a_sweep, a_arc = 0.98 * a_sweep, 0.98 * a_arc
-    plan = build(a_sweep, a_arc, OVERLAP)
+    plan = build(a_sweep, a_arc, OVERLAP, STOPS)
     t, Q, V, A = sample(plan)
 
 legs, starts, gaps, total = plan
-names = ["sweep across", "sweep back to middle", "arc up", "arc down", "arc back to 40 deg", "sweep to end A"]
-report = dict(mode="combo", dwell_seconds=0.0, cycle_seconds=float(t[-1]),
-              leg_starts={n: round(s, 3) for n, s in zip(names, starts)},
+report = dict(mode="combo_stops" if STOPS else "combo", dwell_seconds=DWELL if STOPS else 0.0,
+              photo_stops=sum(isinstance(l, HoldLeg) for l in legs), cycle_seconds=float(t[-1]),
               switch_windows=[(round(s, 3), round(d, 3)) for s, d, _ in gaps], overlap=OVERLAP,
               junction_joint_gap_rad=float(np.abs(q_P - q_M).max()),
               sweep_path_accel=a_sweep, arc_path_accel=a_arc, margin_of_caps=MARGIN,

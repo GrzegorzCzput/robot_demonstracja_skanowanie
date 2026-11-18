@@ -41,3 +41,13 @@ Result: 9.5 s cycle, 92% velocity / 95% acceleration of the caps, slowest camera
 speed at the switches 0.09 m/s (no stop), camera at most 8.6 mm off the planned
 paths and 0.07 deg off target, vertex-based object clearance 11.0 mm (same as
 the original plans).
+
+With photo stops (8 per cycle: the sweep views on the pass from A to B, the arc
+views on the way down), add `stops`:
+
+```bash
+python3 tools/make_combo.py outputs/scan_4_positions.npz outputs/scan_upward_arc.npz outputs/combo_stops.npz 1.0 stops
+```
+
+The stops are planned at 1 s (`dwell_seconds`) and land on the planned photo
+poses; follow_trajectory.py `--hold` rescales them. 23.3 s cycle at 1 s stops.
